@@ -1,4 +1,4 @@
-CoronaVirus
+Corona Vírus
 ================
 
 Um vírus que foi relatado pela primeira vez na cidade chinesa de Wuhan,
