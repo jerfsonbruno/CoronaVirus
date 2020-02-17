@@ -1,0 +1,192 @@
+---
+title: "CoronaVirus"
+output: github_document
+---
+
+Um vírus que foi relatado pela primeira vez na cidade chinesa de Wuhan, agora se espalhou para mais de uma dúzia de países em todo o mundo, provocando uma crise econômica e de saúde sem precedentes.
+A Organização Mundial da Saúde (OMS) declarou o surto do coronavírus uma emergência de saúde pública de interesse mundial.
+
+Vamos dá uma breve olhada na crise atual e depois nos aprofundaremos no "Novel Corona Virus 2019 Dataset" do Kaggle.
+
+## O que é um coronavírus?
+
+Segundo a OMS, os coronavírus (CoV) são uma grande família de vírus que causam doenças que variam do resfriado comum a doenças mais graves, como a Síndrome Respiratória do Oriente Médio (MERS-CoV) e a Síndrome Respiratória Aguda Grave (SARS-CoV).
+Um novo coronavírus (nCoV) é uma nova cepa que não foi previamente identificada em humanos. O vírus identificado como a causa do surto recente está sendo chamado de coronavírus 2019-nCoV ou Wuhan.
+
+# A crise, a partir de hoje
+
+De acordo com o último relatório do New York Times, “o número de infecções confirmadas subiu para 37.198 e o número de mortos na China aumentou para 811, superando o número de mortos pela epidemia de SARS."
+
+Dezesseis cidades na China, com uma população combinada de mais de 50 milhões de pessoas, estão confinadas. As companhias aéreas de todo o mundo cancelaram voos de ida e volta dá China. 
+
+Alguns países estão evacuando seus cidadãos em vôos especiais e os colocando em quarentena rigorosa (Brasil por exemplo). Para piorar, as bolsas de valores caíram na China e os mercados em todo o mundo estão sentindo os efeitos. Alguns analistas prevêem que o surto representa uma ameaça para a economia global, e que tem o potencial de desencadear conseqüências geopolíticas de longo alcance.
+
+# Uma introdução ao conjunto de dados
+
+O Conjunto de dados do "Novel Corona Virus 2019", publicado no Kaggle (https://www.kaggle.com/sudalairajkumar/novel-corona-virus-2019-dataset), foi coletado pela John Hopkins University. A equipe coletou os dados de várias fontes, como a OMS, CDC local e meios de comunicação. Eles também criaram um painel em tempo real para monitorar a propagação do vírus. 
+
+# Importando e Carregando os Dados
+
+```{r}
+dados<-read.table('cv.csv', sep = ',', header = T)
+```
+
+# Compreendendo o conjunto de dados
+
+Vamos primeiro obter um entendimento básico do conjunto de dados e executar operações de limpeza de dados, se necessário.
+
+```{r}
+library(dplyr)
+dados %>% head()
+```
+
+
+Os nomes das colunas são auto-explicativos. A primeira coluna 'Sno' se parece com um número de linha e não agrega valor à análise. A quinta coluna 'Última atualização' mostra o mesmo valor que a coluna 'Data', exceto em alguns casos em que os números foram atualizados posteriormente. Então, irei remover essas duas colunas antes de continuar.
+
+```{r}
+dados<-dados[,c(-1,-5)]
+dados %>% head()
+```
+
+Se fizer uma análise mais aprofundada, a base de dados mostra que faltam nomes de províncias para países como Reino Unido, França e Índia. Nesse caso, não podemos assumir ou preencher valores ausentes de nenhuma observação. 
+
+```{r}
+dados %>% summary()
+```
+
+Fazendo uma rápida análise descritiva, usando a função summary() 
+
+A função summary() retorna as estatísticas gerais das colunas da base de dados. Uma conclusão imediata da saída é que os dados foram relatados cumulativamente, ou seja, o número de casos relatados em um determinado dia inclui os casos relatados anteriormente. O valor 'máximo' de mortes é 1596, o que é consistente com os relatos da mídia há alguns dias (quando esses dados foram publicados 15/02/2020).
+
+```{r}
+dados[,3] %>% unique()
+```
+
+Os dados mostram que o vírus se espalhou para 33 países da Ásia, Europa e América. Para facilitar essa análise, podemos mesclar dados para 'China' e 'Mainland China'. (Others não é um país e sim a contagem dos valores em brancos).
+
+```{r}
+dados[which(dados[,3]=='Mainland China'),3]<-'China'
+dados[,3] %>% unique()
+```
+
+Antes de avançar, vamos verificar o formato das datas na coluna 'Data'.
+
+```{r}
+dados[,1] %>% head()
+```
+
+Parece que os dados foram atualizados em horários diferentes a cada dia. Podemos extrair as datas do registro de data e hora e usá-las para análises adicionais. Isso nos ajudará a manter as datas uniformes.
+
+```{r}
+library(lubridate)
+d<- as.character(dados[,1])
+d<-mdy_hms(d)
+dados[,1] <- as.Date(d, "%d:%m:%Y")
+dados[,1] %>% head()
+```
+
+Agora vamos ter uma noção do impacto do surto em cada país. 
+
+```{r}
+dados %>%group_by(Country) %>%
+  summarise(Confirmed=max(Confirmed), Deaths=max(Deaths), Recovered = max(Recovered))
+```
+- Alto número de casos na China
+
+- Alto número de mortes na China
+
+- China e França foram os únicos países com mortes confirmadas
+
+- Não houve casos confirmados no Brasil
+
+# Plotando os dados
+
+Para visualização dos dados, usaremos três poderosos pacotes do R: ggplot2, dplyr e tidyr.
+
+1 - Número de casos confirmados ao longo do tempo
+
+```{r}
+library(ggplot2)
+ggplot(dados, aes(Date, Confirmed)) + geom_col(fill = "#ff574d") +
+  scale_x_date(breaks = unique(dados[,1])) +
+  theme(axis.text.x.bottom = element_text(angle = 90, hjust = 0))
+
+```
+
+Pelo gráfico acima, conseguimos ver mais de 60000 casos confirmados.
+
+1.2 - Número de mortes confirmados ao longo do tempo
+```{r}
+
+ggplot(dados, aes(Date, Deaths)) + geom_col(fill = "#008000") +
+  scale_x_date(breaks = unique(dados[,1])) +
+  theme(axis.text.x.bottom = element_text(angle = 90, hjust = 0))
+
+
+```
+
+Pelo gráfico acima, conseguimos ver mais de 1500 mortes.
+
+1.3 - Número de casos recuperado ao longo do tempo
+```{r}
+ggplot(dados, aes(Date, Recovered)) + geom_col(fill = "#5390fe") +
+  scale_x_date(breaks = unique(dados[,1])) +
+  theme(axis.text.x.bottom = element_text(angle = 90, hjust = 0))
+```
+
+
+Pelo gráfico acima, conseguimos ver mais de 7500 casos de pessoas recuperadas.
+
+1.4 - Todos os casos ao longo do tempo
+
+```{r}
+library(tidyr)
+dados %>%
+  gather(Casos, Quantidade, -Province.State, -Date,-Country) %>% ggplot(aes(Date, Quantidade, fill=Casos)) + geom_bar(stat = "identity", position = "dodge") +
+  scale_x_date(breaks = unique(dados[,1])) +
+  theme(axis.text.x.bottom = element_text(angle = 90, hjust = 0))
+
+```
+
+2. Mortes e Recuperados
+
+Diante todo o caos, podemos retirar uma noticia boa. Os casos de pessoas recuperadas já superam e muito o número de mortos.
+
+```{r}
+library(tidyr)
+mxr<-dados %>% gather(Casos, Quantidade, -Province.State, -Date,-Country) 
+
+mxr<-mxr[mxr$Casos!='Confirmed',]
+
+mxr%>% ggplot(aes(Date, Quantidade, fill=Casos)) + geom_bar(stat = "identity", position = "dodge") +
+  scale_x_date(breaks = unique(dados[,1])) +
+  theme(axis.text.x.bottom = element_text(angle = 90, hjust = 0))
+```
+
+
+3. Um olhar mais atento às 10 províncias mais afetadas da China
+
+```{r}
+dados_china<-dados[which(dados[,3]=='China'),]
+dados_china %>%group_by(Province.State) %>%
+  summarise(Confirmed=max(Confirmed), Deaths=max(Deaths), Recovered = max(Recovered))%>%
+  arrange(desc(Confirmed))
+```
+
+
+
+# Observações
+
+- A província chinesa de Hubei é o epicentro do surto. Tem significativamente mais casos relatados do que todas as outras províncias juntas. Existem algumas províncias onde não houve mortes e todos os pacientes afetados se recuperaram.
+
+- O número de casos relatados diariamente aumentou quase 500% desde 22 de janeiro. Isso mostra que o vírus é altamente contagioso e está se espalhando rapidamente.
+
+- Durante a primeira semana, a taxa de mortes foi superior à das recuperações. Desde 31 de janeiro, a taxa de recuperação disparou e está mostrando uma tendência positiva. Houve 255 recuperações no dia 4 de fevereiro, em comparação com 66 mortes. A taxa de recuperação continuará a aumentar à medida que mais pessoas conhecerem os sintomas e forem rápidas na procura de medicamentos.
+
+- Países geograficamente próximos à China, como Tailândia, Japão e Cingapura, relataram mais casos do que outros países asiáticos e europeus. A Alemanha é uma exceção e tem o maior número de casos na Europa.
+
+
+# Conclusão
+
+A análise mostra a taxa alarmante na qual o coronavírus está se espalhando. Pelo menos 1590 pessoas já morreram durante a atual epidemia, excedendo as 774 mortes relatadas durante o surto de SARS há sete anos. 
+
